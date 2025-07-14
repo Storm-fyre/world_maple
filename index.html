@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive World Map</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+        body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif; overflow: hidden; }
+        #container { display: flex; height: 100vh; width: 100vw; }
+
+        /* Landscape mode: Equal split (50/50) for map and details */
+        @media (orientation: landscape) {
+            #map-container { width: 50vw; height: 100vh; flex-shrink: 0; }
+            #details { width: 50vw; height: 100vh; padding: 20px; background: #f8f8f8; overflow-y: auto; }
+            #portrait-message { display: none; }
+        }
+
+        /* Portrait mode: Map on top, details below */
+        @media (orientation: portrait) {
+            #container { flex-direction: column; }
+            #map-container { width: 100vw; height: 60vh; flex-shrink: 0; }
+            #details { width: 100vw; height: 40vh; padding: 15px; background: #f8f8f8; overflow-y: auto; box-sizing: border-box; }
+            #portrait-message { display: none; }
+        }
+
+        /* Content wrapper to ensure proper scrolling */
+        #details-content {
+            min-height: calc(100% + 7em);
+            padding-bottom: 7em;
+        }
+
+        .detail-section {
+            margin-bottom: 20px;
+        }
+
+        .detail-section h3 {
+            color: #333;
+            border-bottom: 2px solid #3388ff;
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+        }
+
+        .detail-row {
+            display: flex;
+            margin-bottom: 5px;
+        }
+
+        .detail-label {
+            font-weight: bold;
+            min-width: 150px;
+            color: #555;
+        }
+
+        .detail-value {
+            flex: 1;
+            color: #333;
+        }
+
+        .list-value {
+            color: #333;
+        }
+
+        .number-value {
+            color: #2c7fb8;
+            font-weight: 500;
+        }
+
+        /* Responsive adjustments for smaller screens */
+        @media (orientation: portrait) and (max-width: 480px) {
+            #details { padding: 10px; font-size: 14px; }
+            .detail-label { min-width: 120px; font-size: 13px; }
+            .detail-section h3 { font-size: 16px; }
+            .detail-section { margin-bottom: 15px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="map-container">
+            <div id="map" style="height: 100%; width: 100%;"></div>
+        </div>
+        <div id="details">
+            <h2>State Details</h2>
+            <p>Select a state on the map to view details.</p>
+        </div>
+    </div>
+    <div id="portrait-message">Rotate your device to landscape for the full experience.</div>
+
+    <script>
+        // Function to generate unique color based on name hash
+        function getColor(name, lightness = 80) {
+            let hash = 0;
+            for (let i = 0; i < name.length; i++) {
+                hash = name.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const hue = hash % 360;
+            return `hsl(${hue}, 70%, ${lightness}%)`;
+        }
+
+        // Helper to get hue from name
+        function getHue(name) {
+            let hash = 0;
+            for (let i = 0; i < name.length; i++) {
+                hash = name.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            return hash % 360;
+        }
+
+        // Helper to flatten GeoJSON geometry to list of points {x: lng, y: lat}
+        function getPointsFromGeometry(geometry) {
+            let points = [];
+            if (geometry.type === 'Polygon') {
+                points = geometry.coordinates[0].map(coord => ({ x: coord[0], y: coord[1] })); // Outer ring
+            } else if (geometry.type === 'MultiPolygon') {
+                geometry.coordinates.forEach(poly => {
+                    points = points.concat(poly[0].map(coord => ({ x: coord[0], y: coord[1] }))); // Outer rings
+                });
+            }
+            return points;
+        }
+
+        // Simple Gift Wrapping (Jarvis March) convex hull algorithm
+        function convexHull(points) {
+            if (points.length < 3) return points;
+            let leftmost = points[0];
+            for (let p of points) {
+                if (p.x < leftmost.x) leftmost = p;
+            }
+            const hull = [];
+            let p = leftmost;
+            do {
+                hull.push(p);
+                let q = points[0];
+                for (let r of points) {
+                    if (q === p || cross(p, q, r) > 0) q = r;
+                }
+                p = q;
+            } while (p !== leftmost);
+            return hull;
+        }
+
+        function cross(o, a, b) {
+            return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+        }
+
+        // Function to format arrays for display
+        function formatArrayValue(arr) {
+            if (!Array.isArray(arr)) return arr || 'Not available';
+            return arr.join(', ');
+        }
+
+        // Function to format numbers with commas
+        function formatNumber(num) {
+            if (typeof num !== 'number') return num || 'Not available';
+            return num.toLocaleString();
+        }
+
+        // Function to render detailed state information
+        function renderStateDetails(stateName, stateInfo) {
+            if (!stateInfo) {
+                return `
+                    <h2>${stateName}</h2>
+                    <p>Information not available for this state.</p>
+                `;
+            }
+
+            const basicInfo = stateInfo['Basic Identification'] || {};
+            const symbols = stateInfo['State Symbols'] || {};
+            const geography = stateInfo['Geography'] || {};
+            const demography = stateInfo['Demography'] || {};
+            const economy = stateInfo['Economy'] || {};
+
+            return `
+                <h2>${stateName}</h2>
+                
+                <div class="detail-section">
+                    <h3>Basic Information</h3>
+                    <div class="detail-row">
+                        <div class="detail-label">Capital:</div>
+                        <div class="detail-value">${basicInfo.Capital || 'Not available'}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Formation Date:</div>
+                        <div class="detail-value">${basicInfo['Formation Date'] || 'Not available'}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Official Languages:</div>
+                        <div class="detail-value list-value">${formatArrayValue(basicInfo['Official Languages'])}</div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h3>State Symbols</h3>
+                    <div class="detail-row">
+                        <div class="detail-label">Animal:</div>
+                        <div class="detail-value">${symbols.Animal || 'Not available'}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Bird:</div>
+                        <div class="detail-value">${symbols.Bird || 'Not available'}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Flower:</div>
+                        <div class="detail-value">${symbols.Flower || 'Not available'}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Tree:</div>
+                        <div class="detail-value">${symbols.Tree || 'Not available'}</div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h3>Geography</h3>
+                    <div class="detail-row">
+                        <div class="detail-label">Area:</div>
+                        <div class="detail-value number-value">${formatNumber(geography['Area (sq km)'])} sq km</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Major Rivers:</div>
+                        <div class="detail-value list-value">${formatArrayValue(geography['Major Rivers'])}</div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h3>Demographics</h3>
+                    <div class="detail-row">
+                        <div class="detail-label">Population:</div>
+                        <div class="detail-value number-value">${formatNumber(demography.Population)}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Density:</div>
+                        <div class="detail-value number-value">${formatNumber(demography['Density (per sq km)'])} per sq km</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Literacy Rate:</div>
+                        <div class="detail-value number-value">${demography['Literacy Rate (%)'] || 'Not available'}%</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Sex Ratio:</div>
+                        <div class="detail-value number-value">${formatNumber(demography['Sex Ratio (females per 1000 males)'])} females per 1000 males</div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h3>Economy</h3>
+                    <div class="detail-row">
+                        <div class="detail-label">GDP:</div>
+                        <div class="detail-value number-value">₹${formatNumber(economy['GDP (INR Crore)'])} crore</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">GDP per Capita:</div>
+                        <div class="detail-value number-value">₹${formatNumber(economy['GDP per Capita (INR)'])}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Major Industries:</div>
+                        <div class="detail-value list-value">${formatArrayValue(economy['Major Industries'])}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Major Crops:</div>
+                        <div class="detail-value list-value">${formatArrayValue(economy['Major Crops'])}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Minerals:</div>
+                        <div class="detail-value list-value">${formatArrayValue(economy.Minerals)}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        const islandGroups = ["Lakshadweep", "Andaman and Nicobar Islands"];
+        const map = L.map('map', { zoomControl: true }).setView([20.5937, 78.9629], 5);
+
+        let selectedLayer = null;
+        let animationInterval = null; // To store the setInterval ID
+
+        // Function to stop any ongoing animation and reset layer style
+        function resetSelection() {
+            if (animationInterval) {
+                clearInterval(animationInterval);
+                animationInterval = null;
+            }
+            if (selectedLayer) {
+                selectedLayer.setStyle({
+                    fillColor: getColor(selectedLayer.feature.properties.name),
+                    fillOpacity: 0.8
+                });
+                selectedLayer = null;
+            }
+        }
+
+        // Load states data from separate JSON file
+        let countriesData = {};
+        fetch('./countriesData.json')
+            .then(response => response.json())
+            .then(data => {
+                countriesData = data;
+            })
+            .catch(error => console.error('Error loading states data:', error));
+
+        fetch('./world.geojson')
+            .then(response => response.json())
+            .then(data => {
+                const geoLayer = L.geoJSON(data, {
+                    style: function(feature) {
+                        return {
+                            color: '#3388ff',
+                            weight: 2,
+                            fillColor: getColor(feature.properties.name),
+                            fillOpacity: 0.8
+                        };
+                    },
+                    onEachFeature: function(feature, layer) {
+                        const stateName = feature.properties.name || 'Unknown State';
+
+                        function showDetailsAndAnimate(e) {
+                            // Stop the event from propagating to the map's click handler
+                            L.DomEvent.stop(e);
+
+                            // Stop previous animation and reset layer
+                            resetSelection();
+
+                            // Set new selected layer
+                            selectedLayer = layer;
+
+                            // Update details panel with new detailed format
+                            const stateInfo = countriesData[stateName];
+                            document.getElementById('details').innerHTML = `<div id="details-content">${renderStateDetails(stateName, stateInfo)}</div>`;
+
+                            // Start new animation
+                            const hue = getHue(stateName);
+                            const duration = 1000; // 1 second for a full cycle
+                            const startTime = Date.now();
+
+                            animationInterval = setInterval(() => {
+                                const elapsed = Date.now() - startTime;
+                                // Use a sine wave for a smooth pulse from 0 to 1 and back
+                                const pulse = Math.sin((elapsed / duration) * Math.PI * 2) * 0.5 + 0.5;
+                                // Animate lightness between 70% and 90%
+                                const lightness = 70 + (pulse * 20);
+                                layer.setStyle({
+                                    fillColor: `hsl(${hue}, 85%, ${lightness}%)`,
+                                    fillOpacity: 0.9
+                                });
+                            }, 30); // ~33fps for smooth animation
+                        }
+
+                        layer.on('click', showDetailsAndAnimate);
+
+                        if (islandGroups.includes(stateName)) {
+                            const points = getPointsFromGeometry(feature.geometry);
+                            const hullPoints = convexHull(points);
+                            if (hullPoints.length >= 3) {
+                                const hullLayer = L.geoJSON({
+                                    type: 'Feature',
+                                    properties: feature.properties,
+                                    geometry: { type: 'Polygon', coordinates: [hullPoints.map(pt => [pt.x, pt.y])] }
+                                }, {
+                                    style: { color: '#3388ff', weight: 1, fillColor: getColor(stateName), fillOpacity: 0.3 }
+                                }).addTo(map);
+                                hullLayer.on('click', showDetailsAndAnimate);
+                            }
+                        }
+                    }
+                }).addTo(map);
+
+                map.fitBounds(geoLayer.getBounds());
+                map.setMaxBounds(geoLayer.getBounds().pad(0.1));
+            })
+            .catch(error => console.error('Error loading GeoJSON:', error));
+
+        // Add a click handler to the map to deselect the state
+        map.on('click', function() {
+            resetSelection();
+            document.getElementById('details').innerHTML = `
+                <div id="details-content">
+                    <h2>State Details</h2>
+                    <p>Select a state on the map to view details.</p>
+                </div>
+`;
+        });
+
+        // Handle orientation changes and window resize
+        window.addEventListener('orientationchange', function() {
+            setTimeout(() => {
+                map.invalidateSize();
+            }, 100);
+        });
+
+        window.addEventListener('resize', function() {
+            map.invalidateSize();
+        });
+    </script>
+</body>
+</html>

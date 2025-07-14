@@ -1,0 +1,403 @@
+{
+  "Russia": {
+    "Basic Identification": {
+      "Name": "Russian Federation",
+      "Capital": "Moscow",
+      "Formation Date": "25 December 1991",
+      "Official Languages": [
+        "Russian"
+      ]
+    },
+    "State Symbols": {
+      "Animal": "Eurasian brown bear (Ursus arctos arctos)",
+      "Bird": "Golden eagle (Aquila chrysaetos)",
+      "Flower": "Chamomile (Matricaria recutita)",
+      "Tree": "Birch (Betula pendula)"
+    },
+    "Geography": {
+      "Area (sq km)": 17098246,
+      "Major Rivers": [
+        "Volga",
+        "Ob",
+        "Yenisey",
+        "Lena",
+        "Amur"
+      ]
+    },
+    "Demography": {
+      "Population": 143997393,
+      "Density (per sq km)": 8.8,
+      "Literacy Rate (%)": 99.7,
+      "Sex Ratio (females per 1000 males)": 1154
+    },
+    "Economy": {
+      "GDP (INR Crore)": 181409000,
+      "GDP per Capita (INR)": 1259642,
+      "Major Industries": [
+        "Oil and gas",
+        "Mining",
+        "Aircraft building",
+        "Aerospace production",
+        "Weapons and military machinery"
+      ],
+      "Major Crops": [
+        "Wheat",
+        "Barley",
+        "Maize",
+        "Potatoes",
+        "Sunflower seed"
+      ],
+      "Minerals": [
+        "Iron ore",
+        "Manganese",
+        "Chromium",
+        "Nickel",
+        "Gold"
+      ]
+    }
+  },
+  "Canada": {
+    "Basic Identification": {
+      "Name": "Canada",
+      "Capital": "Ottawa",
+      "Formation Date": "1 July 1867",
+      "Official Languages": [
+        "English",
+        "French"
+      ]
+    },
+    "State Symbols": {
+      "Animal": "North American beaver (Castor canadensis)",
+      "Bird": "Gray jay (Perisoreus canadensis)",
+      "Flower": "Bunchberry (Cornus canadensis)",
+      "Tree": "Maple (Acer)"
+    },
+    "Geography": {
+      "Area (sq km)": 9984670,
+      "Major Rivers": [
+        "Mackenzie River",
+        "St. Lawrence River",
+        "Yukon River",
+        "Columbia River",
+        "Nelson River"
+      ]
+    },
+    "Demography": {
+      "Population": 41296654,
+      "Density (per sq km)": 4,
+      "Literacy Rate (%)": 99,
+      "Sex Ratio (females per 1000 males)": 1010
+    },
+    "Economy": {
+      "GDP (INR Crore)": 187207000,
+      "GDP per Capita (INR)": 4533238,
+      "Major Industries": [
+        "Transportation equipment",
+        "Chemicals",
+        "Minerals",
+        "Food products",
+        "Wood and paper products"
+      ],
+      "Major Crops": [
+        "Wheat",
+        "Barley",
+        "Canola",
+        "Corn",
+        "Soybeans"
+      ],
+      "Minerals": [
+        "Potash",
+        "Uranium",
+        "Nickel",
+        "Cobalt",
+        "Diamonds"
+      ]
+    }
+  },
+  "China": {
+    "Basic Identification": {
+      "Name": "People's Republic of China",
+      "Capital": "Beijing",
+      "Formation Date": "1 October 1949",
+      "Official Languages": [
+        "Standard Chinese"
+      ]
+    },
+    "State Symbols": {
+      "Animal": "Giant panda (Ailuropoda melanoleuca)",
+      "Bird": "Red-crowned crane (Grus japonensis)",
+      "Flower": "Plum blossom (Prunus mume)",
+      "Tree": "Ginkgo (Ginkgo biloba)"
+    },
+    "Geography": {
+      "Area (sq km)": 9706961,
+      "Major Rivers": [
+        "Yangtze",
+        "Yellow River",
+        "Pearl River",
+        "Mekong",
+        "Brahmaputra"
+      ]
+    },
+    "Demography": {
+      "Population": 1425178780,
+      "Density (per sq km)": 149,
+      "Literacy Rate (%)": 96.8,
+      "Sex Ratio (females per 1000 males)": 949
+    },
+    "Economy": {
+      "GDP (INR Crore)": 1617729000,
+      "GDP per Capita (INR)": 1144884,
+      "Major Industries": [
+        "Mining and ore processing",
+        "Iron and steel",
+        "Aluminum",
+        "Coal",
+        "Machinery"
+      ],
+      "Major Crops": [
+        "Rice",
+        "Wheat",
+        "Potatoes",
+        "Tea",
+        "Sorghum"
+      ],
+      "Minerals": [
+        "Coal",
+        "Iron ore",
+        "Petroleum",
+        "Natural gas",
+        "Rare earth elements"
+      ]
+    }
+  },
+  "United States": {
+    "Basic Identification": {
+      "Name": "United States of America",
+      "Capital": "Washington, D.C.",
+      "Formation Date": "4 July 1776",
+      "Official Languages": [
+        "English (de facto)"
+      ]
+    },
+    "State Symbols": {
+      "Animal": "American bison (Bison bison)",
+      "Bird": "Bald eagle (Haliaeetus leucocephalus)",
+      "Flower": "Rose (Rosa)",
+      "Tree": "Oak (Quercus)"
+    },
+    "Geography": {
+      "Area (sq km)": 9525067,
+      "Major Rivers": [
+        "Mississippi River",
+        "Missouri River",
+        "Colorado River",
+        "Rio Grande",
+        "Yukon River"
+      ]
+    },
+    "Demography": {
+      "Population": 341814420,
+      "Density (per sq km)": 36,
+      "Literacy Rate (%)": 99,
+      "Sex Ratio (females per 1000 males)": 1014
+    },
+    "Economy": {
+      "GDP (INR Crore)": 2335829000,
+      "GDP per Capita (INR)": 6814672,
+      "Major Industries": [
+        "Petroleum",
+        "Steel",
+        "Motor vehicles",
+        "Aerospace",
+        "Telecommunications"
+      ],
+      "Major Crops": [
+        "Corn",
+        "Soybeans",
+        "Wheat",
+        "Cotton",
+        "Hay"
+      ],
+      "Minerals": [
+        "Coal",
+        "Copper",
+        "Lead",
+        "Molybdenum",
+        "Uranium"
+      ]
+    }
+  },
+  "Brazil": {
+    "Basic Identification": {
+      "Name": "Federative Republic of Brazil",
+      "Capital": "Brasília",
+      "Formation Date": "7 September 1822",
+      "Official Languages": [
+        "Portuguese"
+      ]
+    },
+    "State Symbols": {
+      "Animal": "Jaguar (Panthera onca)",
+      "Bird": "Rufous-bellied thrush (Turdus rufiventris)",
+      "Flower": "Golden Trumpet Tree (Handroanthus chrysotrichus)",
+      "Tree": "Brazilwood (Paubrasilia echinata)"
+    },
+    "Geography": {
+      "Area (sq km)": 8515767,
+      "Major Rivers": [
+        "Amazon River",
+        "Paraná River",
+        "São Francisco River",
+        "Tocantins River",
+        "Madeira River"
+      ]
+    },
+    "Demography": {
+      "Population": 218689757,
+      "Density (per sq km)": 25,
+      "Literacy Rate (%)": 93.2,
+      "Sex Ratio (females per 1000 males)": 1045
+    },
+    "Economy": {
+      "GDP (INR Crore)": 206746000,
+      "GDP per Capita (INR)": 948149,
+      "Major Industries": [
+        "Textiles",
+        "Shoes",
+        "Chemicals",
+        "Cement",
+        "Motor vehicles and parts"
+      ],
+      "Major Crops": [
+        "Soybeans",
+        "Sugarcane",
+        "Coffee",
+        "Corn",
+        "Oranges"
+      ],
+      "Minerals": [
+        "Bauxite",
+        "Gold",
+        "Iron ore",
+        "Manganese",
+        "Nickel"
+      ]
+    }
+  },
+  "Australia": {
+    "Basic Identification": {
+      "Name": "Commonwealth of Australia",
+      "Capital": "Canberra",
+      "Formation Date": "1 January 1901",
+      "Official Languages": [
+        "English"
+      ]
+    },
+    "State Symbols": {
+      "Animal": "Red kangaroo (Macropus rufus)",
+      "Bird": "Emu (Dromaius novaehollandiae)",
+      "Flower": "Golden wattle (Acacia pycnantha)",
+      "Tree": "Gum tree (Eucalyptus)"
+    },
+    "Geography": {
+      "Area (sq km)": 7692024,
+      "Major Rivers": [
+        "Murray River",
+        "Darling River",
+        "Murrumbidgee River",
+        "Lachlan River",
+        "Cooper Creek"
+      ]
+    },
+    "Demography": {
+      "Population": 26981800,
+      "Density (per sq km)": 3.5,
+      "Literacy Rate (%)": 99,
+      "Sex Ratio (females per 1000 males)": 1008
+    },
+    "Economy": {
+      "GDP (INR Crore)": 149465000,
+      "GDP per Capita (INR)": 5413718,
+      "Major Industries": [
+        "Mining",
+        "Industrial and transportation equipment",
+        "Food processing",
+        "Chemicals",
+        "Steel"
+      ],
+      "Major Crops": [
+        "Wheat",
+        "Barley",
+        "Sugarcane",
+        "Fruits",
+        "Cattle"
+      ],
+      "Minerals": [
+        "Coal",
+        "Iron ore",
+        "Gold",
+        "Bauxite",
+        "Uranium"
+      ]
+    }
+  },
+  "India": {
+    "Basic Identification": {
+      "Name": "Republic of India",
+      "Capital": "New Delhi",
+      "Formation Date": "15 August 1947",
+      "Official Languages": [
+        "Hindi",
+        "English"
+      ]
+    },
+    "State Symbols": {
+      "Animal": "Bengal tiger (Panthera tigris tigris)",
+      "Bird": "Indian peafowl (Pavo cristatus)",
+      "Flower": "Lotus (Nelumbo nucifera)",
+      "Tree": "Banyan (Ficus benghalensis)"
+    },
+    "Geography": {
+      "Area (sq km)": 3287590,
+      "Major Rivers": [
+        "Ganges",
+        "Brahmaputra",
+        "Indus",
+        "Godavari",
+        "Krishna"
+      ]
+    },
+    "Demography": {
+      "Population": 1441719852,
+      "Density (per sq km)": 481,
+      "Literacy Rate (%)": 74.4,
+      "Sex Ratio (females per 1000 males)": 943
+    },
+    "Economy": {
+      "GDP (INR Crore)": 328749500,
+      "GDP per Capita (INR)": 227924,
+      "Major Industries": [
+        "Textiles",
+        "Chemicals",
+        "Food processing",
+        "Steel",
+        "Software"
+      ],
+      "Major Crops": [
+        "Rice",
+        "Wheat",
+        "Cotton",
+        "Sugarcane",
+        "Tea"
+      ],
+      "Minerals": [
+        "Coal",
+        "Iron ore",
+        "Manganese",
+        "Mica",
+        "Bauxite"
+      ]
+    }
+  }
+}
