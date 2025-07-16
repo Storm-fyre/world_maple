@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>World Map Editor</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+        }
+        
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            min-width: 250px;
+        }
+        
+        .controls h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+        }
+        
+        .btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 5px 0;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 14px;
+        }
+        
+        .btn:hover {
+            background: #45a049;
+        }
+        
+        .btn:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .btn.danger {
+            background: #f44336;
+        }
+        
+        .btn.danger:hover {
+            background: #da190b;
+        }
+        
+        .info {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-size: 12px;
+        }
+        
+        .status {
+            margin: 10px 0;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .status.warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+        
+        .country-info {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 8px;
+            border-radius: 4px;
+            margin: 5px 0;
+            font-size: 12px;
+        }
+        
+        .neighbors-info {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 8px;
+            border-radius: 4px;
+            margin: 5px 0;
+            font-size: 11px;
+        }
+        
+        #loadingOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            font-size: 18px;
+        }
+        
+        .vertex-count {
+            font-size: 11px;
+            color: #666;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="loadingOverlay">Loading world map...</div>
+    
+    <div id="map"></div>
+    
+    <div class="controls">
+        <h3>World Map Editor</h3>
+        
+        <div class="info">
+            Click on a country to select it and show draggable vertices. Shared borders will update both countries automatically.
+        </div>
+        
+        <div id="countryInfo" class="country-info" style="display: none;">
+            <strong>Selected:</strong> <span id="selectedCountry">None</span>
+            <div id="vertexCount" class="vertex-count"></div>
+        </div>
+        
+        <div id="neighborsInfo" class="neighbors-info" style="display: none;">
+            <strong>Affected neighbors:</strong>
+            <div id="neighborsList"></div>
+        </div>
+        
+        <button id="clearSelection" class="btn" disabled>Clear Selection</button>
+        <button id="saveChanges" class="btn" disabled>Save Changes</button>
+        <button id="downloadGeoJSON" class="btn" disabled>Download GeoJSON</button>
+        <button id="resetChanges" class="btn danger" disabled>Reset Changes</button>
+        
+        <div id="statusMessage" class="status" style="display: none;"></div>
+        
+        <div class="info">
+            <strong>Instructions:</strong><br>
+            1. Click a country to see its vertices<br>
+            2. Drag red dots to modify borders<br>
+            3. Adjacent countries update automatically<br>
+            4. Save changes when done
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script>
+        class WorldMapEditor {
+            constructor() {
+                this.map = null;
+                this.originalGeoJSON = null;
+                this.currentGeoJSON = null;
+                this.countryLayers = {};
+                this.selectedCountry = null;
+                this.hasChanges = false;
+                this.vertexMarkers = [];
+                this.spatialIndex = new Map(); // For finding neighboring countries
+                this.tolerance = 0.001; // Tolerance for considering points as shared
+                
+                this.initializeMap();
+                this.setupEventListeners();
+                this.loadWorldData();
+            }
+            
+            initializeMap() {
+                this.map = L.map('map').setView([20, 0], 2);
+                
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(this.map);
+            }
+            
+            setupEventListeners() {
+                document.getElementById('clearSelection').addEventListener('click', () => this.clearSelection());
+                document.getElementById('saveChanges').addEventListener('click', () => this.saveChanges());
+                document.getElementById('downloadGeoJSON').addEventListener('click', () => this.downloadGeoJSON());
+                document.getElementById('resetChanges').addEventListener('click', () => this.resetChanges());
+            }
+            
+            async loadWorldData() {
+                try {
+                    const response = await fetch('./world.geojson');
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    this.originalGeoJSON = await response.json();
+                    this.currentGeoJSON = JSON.parse(JSON.stringify(this.originalGeoJSON));
+                    
+                    this.buildSpatialIndex();
+                    this.renderMap();
+                    this.hideLoading();
+                    this.showStatus('World map loaded successfully!', 'success');
+                    
+                } catch (error) {
+                    console.error('Error loading world.geojson:', error);
+                    this.showStatus('Error loading world.geojson. Make sure the file exists in the same directory.', 'error');
+                    this.hideLoading();
+                }
+            }
+            
+            buildSpatialIndex() {
+                this.spatialIndex.clear();
+                
+                this.currentGeoJSON.features.forEach((feature, index) => {
+                    const coords = this.extractAllCoordinates(feature.geometry);
+                    coords.forEach(coord => {
+                        const key = `${Math.round(coord[0] / this.tolerance)},${Math.round(coord[1] / this.tolerance)}`;
+                        if (!this.spatialIndex.has(key)) {
+                            this.spatialIndex.set(key, []);
+                        }
+                        this.spatialIndex.get(key).push(index);
+                    });
+                });
+            }
+            
+            extractAllCoordinates(geometry) {
+                const coords = [];
+                
+                if (geometry.type === 'Polygon') {
+                    geometry.coordinates.forEach(ring => {
+                        ring.forEach(coord => coords.push(coord));
+                    });
+                } else if (geometry.type === 'MultiPolygon') {
+                    geometry.coordinates.forEach(polygon => {
+                        polygon.forEach(ring => {
+                            ring.forEach(coord => coords.push(coord));
+                        });
+                    });
+                }
+                
+                return coords;
+            }
+            
+            findNeighboringCountries(featureIndex) {
+                const neighbors = new Set();
+                const feature = this.currentGeoJSON.features[featureIndex];
+                const coords = this.extractAllCoordinates(feature.geometry);
+                
+                coords.forEach(coord => {
+                    const key = `${Math.round(coord[0] / this.tolerance)},${Math.round(coord[1] / this.tolerance)}`;
+                    const countries = this.spatialIndex.get(key);
+                    if (countries) {
+                        countries.forEach(countryIndex => {
+                            if (countryIndex !== featureIndex) {
+                                neighbors.add(countryIndex);
+                            }
+                        });
+                    }
+                });
+                
+                return Array.from(neighbors);
+            }
+            
+            renderMap() {
+                // Clear existing layers
+                Object.values(this.countryLayers).forEach(layer => {
+                    this.map.removeLayer(layer);
+                });
+                this.countryLayers = {};
+                
+                // Add countries to map
+                this.currentGeoJSON.features.forEach((feature, index) => {
+                    const layer = L.geoJSON(feature, {
+                        style: {
+                            fillColor: '#3388ff',
+                            weight: 1,
+                            opacity: 1,
+                            color: '#ffffff',
+                            fillOpacity: 0.6
+                        }
+                    });
+                    
+                    layer.on('click', () => this.selectCountry(index));
+                    
+                    layer.addTo(this.map);
+                    this.countryLayers[index] = layer;
+                });
+                
+                document.getElementById('downloadGeoJSON').disabled = false;
+            }
+            
+            selectCountry(countryIndex) {
+                this.clearSelection();
+                
+                const feature = this.currentGeoJSON.features[countryIndex];
+                const layer = this.countryLayers[countryIndex];
+                
+                // Highlight selected country
+                layer.setStyle({
+                    fillColor: '#ff7800',
+                    weight: 2,
+                    color: '#ff7800'
+                });
+                
+                this.selectedCountry = { index: countryIndex, feature, layer };
+                
+                // Show draggable vertices immediately
+                this.showVertices(feature, countryIndex);
+                
+                // Update UI
+                const countryName = feature.properties.NAME || feature.properties.name || 'Unknown';
+                document.getElementById('selectedCountry').textContent = countryName;
+                document.getElementById('countryInfo').style.display = 'block';
+                document.getElementById('clearSelection').disabled = false;
+                
+                // Show neighboring countries
+                const neighbors = this.findNeighboringCountries(countryIndex);
+                this.showNeighbors(neighbors);
+                
+                this.showStatus(`Selected: ${countryName}. Drag vertices to modify borders.`, 'success');
+            }
+            
+            showNeighbors(neighborIndices) {
+                const neighborsInfo = document.getElementById('neighborsInfo');
+                const neighborsList = document.getElementById('neighborsList');
+                
+                if (neighborIndices.length > 0) {
+                    const neighborNames = neighborIndices.map(index => {
+                        const feature = this.currentGeoJSON.features[index];
+                        return feature.properties.NAME || feature.properties.name || 'Unknown';
+                    }).join(', ');
+                    
+                    neighborsList.textContent = neighborNames;
+                    neighborsInfo.style.display = 'block';
+                } else {
+                    neighborsInfo.style.display = 'none';
+                }
+            }
+            
+            showVertices(feature, countryIndex) {
+                this.clearVertices();
+                
+                let vertexCount = 0;
+                
+                if (feature.geometry.type === 'Polygon') {
+                    feature.geometry.coordinates.forEach((ring, ringIndex) => {
+                        this.createVerticesForRing(ring, countryIndex, ringIndex, 0);
+                        vertexCount += ring.length;
+                    });
+                } else if (feature.geometry.type === 'MultiPolygon') {
+                    feature.geometry.coordinates.forEach((polygon, polygonIndex) => {
+                        polygon.forEach((ring, ringIndex) => {
+                            this.createVerticesForRing(ring, countryIndex, ringIndex, polygonIndex);
+                            vertexCount += ring.length;
+                        });
+                    });
+                }
+                
+                document.getElementById('vertexCount').textContent = `${vertexCount} vertices`;
+            }
+            
+            createVerticesForRing(ring, countryIndex, ringIndex, polygonIndex) {
+                ring.forEach((coord, coordIndex) => {
+                    const marker = L.circleMarker([coord[1], coord[0]], {
+                        radius: 4,
+                        fillColor: '#ff0000',
+                        color: '#ffffff',
+                        weight: 1,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    });
+                    
+                    marker.on('drag', (e) => {
+                        const newLatLng = e.target.getLatLng();
+                        const newCoord = [newLatLng.lng, newLatLng.lat];
+                        
+                        // Update the coordinate in the current country
+                        ring[coordIndex] = newCoord;
+                        
+                        // Update shared borders in neighboring countries
+                        this.updateSharedBorders(coord, newCoord, countryIndex);
+                        
+                        // Re-render the affected countries
+                        this.renderAffectedCountries(countryIndex);
+                        
+                        this.hasChanges = true;
+                        this.updateSaveButton();
+                    });
+                    
+                    marker.addTo(this.map);
+                    marker.dragging = new L.Handler.MarkerDrag(marker);
+                    marker.dragging.enable();
+                    
+                    this.vertexMarkers.push(marker);
+                });
+            }
+            
+            updateSharedBorders(oldCoord, newCoord, excludeCountryIndex) {
+                // Find countries that share this coordinate
+                const key = `${Math.round(oldCoord[0] / this.tolerance)},${Math.round(oldCoord[1] / this.tolerance)}`;
+                const affectedCountries = this.spatialIndex.get(key);
+                
+                if (affectedCountries) {
+                    affectedCountries.forEach(countryIndex => {
+                        if (countryIndex !== excludeCountryIndex) {
+                            this.updateCountryCoordinate(countryIndex, oldCoord, newCoord);
+                        }
+                    });
+                }
+                
+                // Update spatial index
+                this.buildSpatialIndex();
+            }
+            
+            updateCountryCoordinate(countryIndex, oldCoord, newCoord) {
+                const feature = this.currentGeoJSON.features[countryIndex];
+                
+                if (feature.geometry.type === 'Polygon') {
+                    feature.geometry.coordinates.forEach(ring => {
+                        ring.forEach((coord, index) => {
+                            if (this.coordsEqual(coord, oldCoord)) {
+                                ring[index] = newCoord;
+                            }
+                        });
+                    });
+                } else if (feature.geometry.type === 'MultiPolygon') {
+                    feature.geometry.coordinates.forEach(polygon => {
+                        polygon.forEach(ring => {
+                            ring.forEach((coord, index) => {
+                                if (this.coordsEqual(coord, oldCoord)) {
+                                    ring[index] = newCoord;
+                                }
+                            });
+                        });
+                    });
+                }
+            }
+            
+            coordsEqual(coord1, coord2) {
+                return Math.abs(coord1[0] - coord2[0]) < this.tolerance && 
+                       Math.abs(coord1[1] - coord2[1]) < this.tolerance;
+            }
+            
+            renderAffectedCountries(primaryCountryIndex) {
+                const neighbors = this.findNeighboringCountries(primaryCountryIndex);
+                const affectedCountries = [primaryCountryIndex, ...neighbors];
+                
+                affectedCountries.forEach(countryIndex => {
+                    const feature = this.currentGeoJSON.features[countryIndex];
+                    const oldLayer = this.countryLayers[countryIndex];
+                    
+                    // Remove old layer
+                    this.map.removeLayer(oldLayer);
+                    
+                    // Create new layer with updated geometry
+                    const newLayer = L.geoJSON(feature, {
+                        style: countryIndex === primaryCountryIndex ? {
+                            fillColor: '#ff7800',
+                            weight: 2,
+                            color: '#ff7800',
+                            fillOpacity: 0.6
+                        } : {
+                            fillColor: '#3388ff',
+                            weight: 1,
+                            opacity: 1,
+                            color: '#ffffff',
+                            fillOpacity: 0.6
+                        }
+                    });
+                    
+                    newLayer.on('click', () => this.selectCountry(countryIndex));
+                    newLayer.addTo(this.map);
+                    
+                    this.countryLayers[countryIndex] = newLayer;
+                });
+                
+                // Update selected country reference
+                if (this.selectedCountry && this.selectedCountry.index === primaryCountryIndex) {
+                    this.selectedCountry.layer = this.countryLayers[primaryCountryIndex];
+                }
+            }
+            
+            clearVertices() {
+                this.vertexMarkers.forEach(marker => {
+                    this.map.removeLayer(marker);
+                });
+                this.vertexMarkers = [];
+            }
+            
+            clearSelection() {
+                this.clearVertices();
+                
+                if (this.selectedCountry) {
+                    this.selectedCountry.layer.setStyle({
+                        fillColor: '#3388ff',
+                        weight: 1,
+                        color: '#ffffff'
+                    });
+                    this.selectedCountry = null;
+                }
+                
+                document.getElementById('countryInfo').style.display = 'none';
+                document.getElementById('neighborsInfo').style.display = 'none';
+                document.getElementById('clearSelection').disabled = true;
+                
+                this.showStatus('Selection cleared', 'success');
+            }
+            
+            updateSaveButton() {
+                document.getElementById('saveChanges').disabled = !this.hasChanges;
+                document.getElementById('resetChanges').disabled = !this.hasChanges;
+            }
+            
+            saveChanges() {
+                if (!this.hasChanges) return;
+                
+                const dataStr = JSON.stringify(this.currentGeoJSON, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                
+                const url = URL.createObjectURL(dataBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'world_modified.geojson';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                
+                this.hasChanges = false;
+                this.updateSaveButton();
+                this.showStatus('Changes saved! Download started.', 'success');
+            }
+            
+            downloadGeoJSON() {
+                const dataStr = JSON.stringify(this.currentGeoJSON, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                
+                const url = URL.createObjectURL(dataBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'world.geojson';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                
+                this.showStatus('GeoJSON downloaded!', 'success');
+            }
+            
+            resetChanges() {
+                if (confirm('Are you sure you want to reset all changes? This cannot be undone.')) {
+                    this.currentGeoJSON = JSON.parse(JSON.stringify(this.originalGeoJSON));
+                    this.hasChanges = false;
+                    this.clearSelection();
+                    
+                    this.buildSpatialIndex();
+                    this.renderMap();
+                    this.updateSaveButton();
+                    
+                    this.showStatus('All changes reset!', 'success');
+                }
+            }
+            
+            showStatus(message, type) {
+                const statusEl = document.getElementById('statusMessage');
+                statusEl.textContent = message;
+                statusEl.className = `status ${type}`;
+                statusEl.style.display = 'block';
+                
+                setTimeout(() => {
+                    statusEl.style.display = 'none';
+                }, 3000);
+            }
+            
+            hideLoading() {
+                document.getElementById('loadingOverlay').style.display = 'none';
+            }
+        }
+        
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', () => {
+            new WorldMapEditor();
+        });
+    </script>
+</body>
+</html>
